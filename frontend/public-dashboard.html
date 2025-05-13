@@ -2,44 +2,202 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Public Dashboard</nobreak></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Public News Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<div class="nav">
-    <div>News Dashboard</div>
-    <a href="login.html" onclick="logout()">Logout</a>
-</div>
-<div class="container">
-    <h1>Latest News</h1>
-    <ul class="news-list" id="newsList"></ul>
-</div>
-<script>
-const API_KEY = 'YOUR_NEWSDATA_IO_API_KEY';
-const fetchNews = async () => {
-    const res = await fetch(`https://api.newsdatal.io/v1/news?lang=en&limit=10&apiKey=${API_KEY}`);
-    const data = await res.json();
-    const newsList = document.getElementById('newsList');
-    newsList.innerHTML = '';
-    data.articles.forEach(article => {
-        const li = document.createElement('li');
-        li.className = 'news-item';
-        li.innerHTML = `<h3><a href="${article.url}" target="_blank">${article.title}</a></h3><p>${article.description || ''}</p>`;
-        newsList.appendChild(li);
-    });
-};
-const logout = () => {
-    localStorage.removeItem('loggedInUser');
-};
-window.onload = () => {
-    const user = JSON.parse(localStorage.getItem('loggedInUser'));
-    if (!user) {
-        window.location = 'login.html';
-    } else {
-        fetchNews();
-    }
-};
-</script>
+    <div class="nav">
+        <div>Public News Dashboard</div>
+        <div id="currentUser"></div>
+    </div>
+
+    <div class="container" id="mainView">
+        <div class="filter-row">
+            <label for="keyword">Keyword:</label>
+            <input type="text" id="keyword" placeholder="e.g., technology" />
+            <label for="language" style="margin-left:1rem;">Language:</label>
+            <select id="language">
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="bn">Bengali</option>
+                <option value="ta">Tamil</option>
+                <option value="te">Telugu</option>
+                <option value="mr">Marathi</option>
+                <option value="gu">Gujarati</option>
+                <option value="pa">Punjabi</option>
+                <option value="ml">Malayalam</option>
+                <option value="kn">Kannada</option>
+                <option value="or">Odia</option>
+                <option value="ur">Urdu</option>
+            </select>
+            <button onclick="loadNews()">🔍 Search</button>
+        </div>
+        <ul class="news-list" id="newsList">
+            <li>Loading news…</li>
+        </ul>
+    </div>
+
+    <!-- Comments page -->
+    <div class="container" id="commentsView" style="display:none;">
+        <button onclick="backToNews()" style="margin-bottom:1rem;">← Back to News</button>
+        <h2 id="commentsTitle">Comments</h2>
+        <p id="commentsDescription" style="font-size:0.9rem;color:#333;margin-bottom:1rem;"></p>
+        <!-- Chart container -->
+        <canvas id="sentimentChart" width="400" height="200" style="margin-bottom:1rem;"></canvas>
+        <div class="comments-page-list" id="commentsPageList">
+            <!-- dummy + fetched comments rendered here -->
+        </div>
+        <div class="add-comment" style="margin-top:1rem;">
+            <input type="text" id="newCommentInput" placeholder="Write a comment..." style="width:80%; padding:0.5rem;" />
+            <button onclick="postComment()" style="padding:0.5rem 1rem; margin-left:0.5rem;">Post</button>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'pub_708947f13cf03d65a8961a4e52e2ca636cdf8';
+        const ANALYZE_URL = 'http://localhost:5000/analyze';
+        const COMMENT_URL = 'http://localhost:5000/comment';
+        const COMMENTS_URL = 'http://localhost:5000/comments';
+        let currentArticleLink = null;
+        const articleDescriptions = {};
+        const articleEmotionMap = {};
+
+        function displayUser() {
+            const user = JSON.parse(localStorage.getItem('loggedInUser'));
+            document.getElementById('currentUser').textContent = user ? `Logged in as: ${user.username}` : 'Not logged in';
+        }
+
+        async function analyzeArticle(text) {
+            const res = await fetch(ANALYZE_URL, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            return await res.json();
+        }
+
+        async function fetchComments(link) {
+            const res = await fetch(`${COMMENTS_URL}?link=${encodeURIComponent(link)}`);
+            const data = await res.json();
+            return data.comments || [];
+        }
+
+        const dummyTemplates = {
+            very_happy: ['Absolutely fantastic news!', 'This made my day!'],
+            happy: ['Great to hear this.', 'Nice update!'],
+            neutral: ['Informative read.', 'Thank you for sharing.'],
+            disappointed: ['This is a letdown.', 'I expected better.'],
+            angry: ['This is outrageous!', 'I am very upset by this.']
+        };
+        const dummyNames = ['Rahul','Priya','Amit','Sunita','Vikram','Neha','Rohan','Anita'];
+
+        function generateDummyComments(emotion) {
+            const templates = dummyTemplates[emotion] || dummyTemplates.neutral;
+            return templates.map((text, i) => ({
+                user: dummyNames[i % dummyNames.length],
+                text,
+                time: new Date(Date.now() - (i+1)*3600000).toISOString(),
+                emotion
+            }));
+        }
+
+        function renderChart(comments) {
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+            const counts = comments.reduce((acc, c) => {
+                acc[c.emotion] = (acc[c.emotion] || 0) + 1;
+                return acc;
+            }, {});
+            const labels = Object.keys(counts);
+            const data = Object.values(counts);
+            if (window.sentChart) window.sentChart.destroy();
+            window.sentChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Comment Emotions', data }] },
+                options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        async function renderCommentsPage(serverComments) {
+            const listDiv = document.getElementById('commentsPageList');
+            listDiv.innerHTML = '';
+            const emotion = articleEmotionMap[currentArticleLink] || 'neutral';
+            const dummies = generateDummyComments(emotion);
+            const all = dummies.concat(serverComments);
+
+            // render comments
+            all.forEach(c => {
+                const div = document.createElement('div');
+                div.style.borderBottom = '1px solid #e1e4e8';
+                div.style.padding = '8px 0';
+                const badge = `<span class="sentiment ${c.emotion}">${c.emotion.charAt(0).toUpperCase()+c.emotion.slice(1)}</span>`;
+                div.innerHTML = `
+                    <div style="font-size:0.9rem;color:#555;"><strong>${c.user}</strong> at ${new Date(c.time).toLocaleString()} ${badge}</div>
+                    <div>${c.text}</div>
+                `;
+                listDiv.appendChild(div);
+            });
+
+            // render chart
+            renderChart(all);
+        }
+
+        async function postComment() {
+            const input = document.getElementById('newCommentInput');
+            const text = input.value.trim(); if (!text) return;
+            const user = JSON.parse(localStorage.getItem('loggedInUser')); if (!user) return alert('Please log in first');
+            const payload = { link: currentArticleLink, user: user.username, text };
+            const res = await fetch(COMMENT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const data = await res.json();
+            input.value = '';
+            renderCommentsPage(data.comments);
+        }
+
+        function backToNews() {
+            document.getElementById('commentsView').style.display = 'none';
+            document.getElementById('mainView').style.display = 'block';
+        }
+
+        async function showCommentsPage(link, title) {
+            currentArticleLink = link;
+            document.getElementById('mainView').style.display = 'none';
+            document.getElementById('commentsView').style.display = 'block';
+            document.getElementById('commentsTitle').textContent = `Comments for: ${title}`;
+            document.getElementById('commentsDescription').textContent = articleDescriptions[link] || '';
+            const serverComments = await fetchComments(link);
+            renderCommentsPage(serverComments);
+        }
+
+        async function loadNews() {
+            const kw = document.getElementById('keyword').value.trim();
+            const lang = document.getElementById('language').value;
+            let url = `https://newsdata.io/api/1/latest?apikey=${API_KEY}&language=${lang}`;
+            if (kw) url += `&q=${encodeURIComponent(kw)}`;
+            const list = document.getElementById('newsList'); list.innerHTML = '<li>Loading news…</li>';
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (!data.results || !data.results.length) { list.innerHTML = '<li>No news articles found.</li>'; return; }
+                list.innerHTML = '';
+                for (const art of data.results) {
+                    const desc = art.description || 'No description available.';
+                    articleDescriptions[art.link] = desc;
+                    const analysis = await analyzeArticle(desc);
+                    const sentiment = analysis.sentiment;
+                    articleEmotionMap[art.link] = analysis.emotion;
+                    const li = document.createElement('li'); li.className = 'news-item';
+                    li.innerHTML = `
+                        <h3><a href="#" onclick="event.preventDefault();showCommentsPage('${art.link}','${art.title.replace(/'/g,"\\'")}')">${art.title}</a></h3>
+                        <div><small>${art.source_id||'Unknown'} • ${new Date(art.pubDate).toLocaleString()}</small>
+                        <span class="sentiment ${sentiment}">${sentiment.charAt(0).toUpperCase()+sentiment.slice(1)}</span></div>
+                    `;
+                    list.appendChild(li);
+                }
+            } catch (e) { list.innerHTML = '<li>Error loading news. Check console.</li>'; console.error(e); }
+        }
+
+        window.onload = () => { displayUser(); loadNews(); };
+    </script>
 </body>
 </html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journalist Dashboard</nobreak></title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="nav">
+    <div>Journalist Dashboard</div>
+    <a href="login.html" onclick="logout()">Logout</a>
+</div>
+<div class="container">
+    <h1>Latest News for Journalists</h1>
+    <ul class="news-list" id="newsList"></ul>
+</div>
+<script>
+const API_KEY = 'pub_708947f13cf03d65a8961a4e52e2ca636cdf8';
+const fetchNews = async () => {
+    const res = await fetch(`https://api.newsdatal.io/v1/news?lang=en&limit=20&apiKey=${API_KEY}`);
+    const data = await res.json();
+    const newsList = document.getElementById('newsList');
+    newsList.innerHTML = '';
+    data.articles.forEach(article => {
+        const li = document.createElement('li');
+        li.className = 'news-item';
+        li.innerHTML = `<h3><a href="${article.url}" target="_blank">${article.title}</a></h3><p>${article.description || ''}</p>`;
+        newsList.appendChild(li);
+    });
+};
+const logout = () => {
+    localStorage.removeItem('loggedInUser');
+};
+window.onload = () => {
+    const user = JSON.parse(localStorage.getItem('loggedInUser'));
+    if (!user || user.role !== 'journalist') {
+        window.location = 'login.html';
+    } else {
+        fetchNews();
+    }
+};
+</script>
+</body>
+</html>

@@ -1,154 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Real-Time News Analysis</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f1f5f9;
-      margin: 0;
-      padding: 0;
-    }
-
-    header {
-      background-color: #1e293b;
-      color: white;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.5rem;
-    }
-
-    .container {
-      display: flex;
-      flex-direction: row;
-      padding: 1rem;
-      gap: 1rem;
-    }
-
-    .sidebar, .main-content {
-      background: white;
-      border-radius: 10px;
-      padding: 1rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    .sidebar {
-      width: 250px;
-    }
-
-    .main-content {
-      flex-grow: 1;
-    }
-
-    .news-card {
-      border-bottom: 1px solid #e2e8f0;
-      padding: 1rem 0;
-    }
-
-    .news-title {
-      font-weight: bold;
-      margin-bottom: 0.3rem;
-    }
-
-    .news-meta {
-      font-size: 0.85rem;
-      color: #666;
-    }
-
-    .sentiment {
-      font-size: 0.75rem;
-      display: inline-block;
-      margin-top: 0.3rem;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-    }
-
-    .positive { background: #d1fae5; color: #065f46; }
-    .neutral { background: #e0f2fe; color: #0369a1; }
-    .negative { background: #fee2e2; color: #991b1b; }
-
-    @media (max-width: 768px) {
-      .container {
-        flex-direction: column;
-      }
-
-      .sidebar {
-        width: 100%;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Portal</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
-<header>📰 Real-Time News Analysis</header>
-
 <div class="container">
-  <div class="sidebar">
-    <h3>Filters</h3>
-    <label for="keyword">Keyword</label>
-    <input type="text" id="keyword" placeholder="e.g., economy" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem;">
-    <button onclick="loadNews()" style="padding: 0.5rem 1rem;">🔄 Load News</button>
-  </div>
-
-  <div class="main-content" id="newsContainer">
-    <p>Loading news...</p>
-  </div>
+    <h1>Welcome to Real-Time News Portal</h1>
+    <p>Select an option to proceed:</p>
+    <a href="signup.html"><button class="signup">Sign Up</button></a>
+    <a href="login.html"><button class="login">Login</button></a>
 </div>
-
-<script>
-  const apiKey = 'pub_708947f13cf03d65a8961a4e52e2ca636cdf8'; // <-- Replace this with your NewsData.io API key
-  const apiBaseUrl = `https://newsdata.io/api/1/latest?apikey=${apiKey}&language=en`;
-
-  const newsContainer = document.getElementById('newsContainer');
-
-  function getSentiment(text) {
-    const lower = text.toLowerCase();
-    if (lower.includes('crash') || lower.includes('layoff') || lower.includes('conflict') || lower.includes('war') || lower.includes('down')) {
-      return `<span class="sentiment negative">Negative</span>`;
-    } else if (lower.includes('growth') || lower.includes('record') || lower.includes('surge') || lower.includes('profit') || lower.includes('win')) {
-      return `<span class="sentiment positive">Positive</span>`;
-    } else {
-      return `<span class="sentiment neutral">Neutral</span>`;
-    }
-  }
-
-  async function loadNews() {
-    const keyword = document.getElementById('keyword').value.trim();
-    const url = keyword ? `${apiBaseUrl}&q=${encodeURIComponent(keyword)}` : apiBaseUrl;
-
-    newsContainer.innerHTML = '<p>Loading news...</p>';
-
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (!data.results || data.results.length === 0) {
-        newsContainer.innerHTML = '<p>No news articles found.</p>';
-        return;
-      }
-
-      newsContainer.innerHTML = '';
-      data.results.forEach(article => {
-        const card = document.createElement('div');
-        card.className = 'news-card';
-        card.innerHTML = `
-          <div class="news-title">${article.title}</div>
-          <div class="news-meta">${article.source_id || 'Unknown Source'} • ${new Date(article.pubDate).toLocaleString()}</div>
-          ${getSentiment(article.title)}
-        `;
-        newsContainer.appendChild(card);
-      });
-    } catch (error) {
-      console.error('Error fetching news:', error);
-      newsContainer.innerHTML = '<p>Error loading news. Check API key or connection.</p>';
-    }
-  }
-
-  // Load news on first page load
-  loadNews();
-</script>
-
 </body>
 </html>

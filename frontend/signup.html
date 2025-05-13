@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup</nobreak></title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <h1>Signup</h1>
+    <form id="signupForm">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <select id="role">
+            <option value="public">General Public</option>
+            <option value="journalist">Journalist</option>
+        </select>
+        <button type="submit">Sign Up</button>
+    </form>
+    <p>Already have an account? <a href="login.html">Login</a></p>
+</div>
+<script>
+const signupForm = document.getElementById('signupForm');
+signupForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const role = document.getElementById('role').value;
+    let users = JSON.parse(localStorage.getItem('users')) || [];
+    if (users.find(u => u.username === username)) {
+        alert('Username already exists!');
+        return;
+    }
+    users.push({ username, password, role });
+    localStorage.setItem('users', JSON.stringify(users));
+    alert('Signup successful!');
+    window.location = 'login.html';
+});
+</script>
+</body>
+</html>

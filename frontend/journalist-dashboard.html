@@ -1,45 +1,176 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Journalist Dashboard</nobreak></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Journalist Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* minimal in-page styles for filter row */
+        .filter-row {
+            margin: 1rem 0;
+        }
+
+        .filter-row input,
+        .filter-row select {
+            padding: 0.5rem;
+            width: 200px;
+        }
+
+        .filter-row button {
+            padding: 0.5rem 1rem;
+            margin-left: 0.5rem;
+        }
+
+        .sentiment {
+            font-size: 0.75rem;
+            display: inline-block;
+            margin-left: 1rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .positive {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .neutral {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .negative {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .description {
+            font-size: 0.9rem;
+            color: #333;
+            display: none;
+            margin-top: 0.5rem;
+        }
+    </style>
 </head>
+
 <body>
-<div class="nav">
-    <div>Journalist Dashboard</div>
-    <a href="login.html" onclick="logout()">Logout</a>
-</div>
-<div class="container">
-    <h1>Latest News for Journalists</h1>
-    <ul class="news-list" id="newsList"></ul>
-</div>
-<script>
-const API_KEY = 'pub_708947f13cf03d65a8961a4e52e2ca636cdf8';
-const fetchNews = async () => {
-    const res = await fetch(`https://api.newsdatal.io/v1/news?lang=en&limit=20&apiKey=${API_KEY}`);
-    const data = await res.json();
-    const newsList = document.getElementById('newsList');
-    newsList.innerHTML = '';
-    data.articles.forEach(article => {
-        const li = document.createElement('li');
-        li.className = 'news-item';
-        li.innerHTML = `<h3><a href="${article.url}" target="_blank">${article.title}</a></h3><p>${article.description || ''}</p>`;
-        newsList.appendChild(li);
-    });
-};
-const logout = () => {
-    localStorage.removeItem('loggedInUser');
-};
-window.onload = () => {
-    const user = JSON.parse(localStorage.getItem('loggedInUser'));
-    if (!user || user.role !== 'journalist') {
-        window.location = 'login.html';
-    } else {
-        fetchNews();
-    }
-};
-</script>
+    <div class="nav">
+        <div>Journalist Dashboard</div>
+        <a href="login.html" onclick="logout()">Logout</a>
+    </div>
+
+    <div class="container">
+        <h1>Latest News for Journalists</h1>
+
+        <div class="filter-row">
+            <label for="keyword">Keyword:</label>
+            <input type="text" id="keyword" placeholder="e.g., economy">
+
+            <label for="language" style="margin-left:1rem;">Language:</label>
+            <select id="language">
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="bn">Bengali</option>
+                <option value="ta">Tamil</option>
+                <option value="te">Telugu</option>
+                <option value="mr">Marathi</option>
+                <option value="gu">Gujarati</option>
+                <option value="pa">Punjabi</option>
+                <option value="ml">Malayalam</option>
+                <option value="kn">Kannada</option>
+                <option value="or">Odia</option>
+                <option value="ur">Urdu</option>
+            </select>
+
+            <button onclick="loadNews()">🔍 Search</button>
+        </div>
+
+        <ul class="news-list" id="newsList">
+            <li>Loading news…</li>
+        </ul>
+    </div>
+
+    <script>
+        const API_KEY = 'pub_708947f13cf03d65a8961a4e52e2ca636cdf8';               // your NewsData.io API key
+        const BACKEND_URL = 'http://localhost:5000/analyze';
+
+        function logout() {
+            localStorage.removeItem('loggedInUser');
+        }
+
+        function getSentimentBadge(sentiment) {
+            return `<span class=\"sentiment ${sentiment}\">${sentiment.charAt(0).toUpperCase() + sentiment.slice(1)
+                }</span>`;
+        }
+
+        async function analyzeSentiment(text) {
+            const res = await fetch(BACKEND_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            const data = await res.json();
+            return data.sentiment;
+        }
+
+        async function loadNews() {
+            const user = JSON.parse(localStorage.getItem('loggedInUser'));
+            if (!user || user.role !== 'journalist') {
+                return window.location = 'login.html';
+            }
+
+            const kw = document.getElementById('keyword').value.trim();
+            const lang = document.getElementById('language').value;
+            let url = `https://newsdata.io/api/1/latest?apikey=${API_KEY}&language=${lang}`;
+            if (kw) url += `&q=${encodeURIComponent(kw)}`;
+
+            const list = document.getElementById('newsList');
+            list.innerHTML = '<li>Loading news…</li>';
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (!data.results || data.results.length === 0) {
+                    list.innerHTML = '<li>No news articles found.</li>';
+                    return;
+                }
+
+                list.innerHTML = '';
+                for (const art of data.results) {
+                    const desc = art.description || 'No description available.';
+                    const sentiment = await analyzeSentiment(desc);
+
+                    const li = document.createElement('li');
+                    li.className = 'news-item';
+                    li.innerHTML = `
+            <h3>
+              <a href="${art.link}" target="_blank">${art.title}</a>
+            </h3>
+            <div>
+              <small>${art.source_id || 'Unknown'} • ${new Date(art.pubDate).toLocaleString()}</small>
+              ${getSentimentBadge(sentiment)}
+            </div>
+            <div class="description">${desc}</div>
+          `;
+
+                    li.addEventListener('click', () => {
+                        const d = li.querySelector('.description');
+                        d.style.display = d.style.display === 'block' ? 'none' : 'block';
+                    });
+
+                    list.appendChild(li);
+                }
+            } catch (err) {
+                console.error(err);
+                list.innerHTML = '<li>Error loading news. Check console.</li>';
+            }
+        }
+
+        window.onload = loadNews;
+    </script>
 </body>
+
 </html>

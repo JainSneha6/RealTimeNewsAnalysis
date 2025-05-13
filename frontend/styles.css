@@ -198,3 +198,75 @@ p {
     border-bottom: 1px solid #ddd;
   }
 }
+
+/* Welcome/Portal Page Styles */
+.container h1 {
+  text-align: center;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+}
+
+.container > p {
+  text-align: center;
+  font-size: 1rem;
+  color: #444;
+  margin-bottom: 2rem;
+}
+
+.container a {
+  text-decoration: none;
+  display: inline-block;
+}
+
+.container a button {
+  max-width: 200px;
+  margin: 0 10px 20px;
+}
+
+.container a:first-of-type {
+  margin-right: 10px;
+}
+
+/* Center buttons container */
+.container {
+  text-align: center;
+}
+
+/* Style for signup and login buttons */
+.signup, .login {
+  display: inline-block;
+  width: 160px;
+  margin: 0 8px;
+}
+
+.signup {
+  background-color: #28a745;
+}
+
+.signup:hover {
+  background-color: #218838;
+}
+
+.login {
+  background-color: #0366d6;
+}
+
+.login:hover {
+  background-color: #0256b3;
+}
+
+/* Add a container to make the welcome page more professional */
+@media (min-width: 768px) {
+  .container {
+    margin-top: 4rem;
+    max-width: 500px;
+    background-color: white;
+    padding: 2rem;
+    border: 1px solid #e1e4e8;
+  }
+  
+  .container h1 {
+    margin-top: 0;
+  }
+}
